@@ -10,21 +10,22 @@ import androidx.compose.runtime.mutableStateListOf
 import com.example.recipeapp.model.Ingredient
 import com.google.gson.reflect.TypeToken
 import com.google.gson.Gson
+import androidx.core.net.toUri
 
 class MainActivity : ComponentActivity() {
 
-    // Sample data for demonstration purposes
+    // Sample data for demonstration purposez ito yung need palatan using db and api
     private val recipes = mutableStateListOf(
         Recipe(1, "Pancakes", listOf(
             Ingredient("Flour", "100", "grams"),
             Ingredient("Eggs", "2", "pieces"),
             Ingredient("Milk", "200", "ml")
-        ), "Mix and cook."),
+        ), "Mix and cook.", imageUri = "android.resource://com.example.recipeapp/drawable/sample_pancake"),
         Recipe(2, "Salad", listOf(
             Ingredient("Lettuce", "1", "head"),
             Ingredient("Tomato", "2", "pieces"),
             Ingredient("Cucumber", "1", "piece")
-        ), "Chop and mix.")
+        ), "Chop and mix.", imageUri = "android.resource://com.example.recipeapp/drawable/sample_salad")
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,6 +38,29 @@ class MainActivity : ComponentActivity() {
                 val name = data?.getStringExtra("name") ?: return@registerForActivityResult
                 val ingredientsJson = data.getStringExtra("ingredients_json") ?: return@registerForActivityResult
                 val directions = data.getStringExtra("directions") ?: return@registerForActivityResult
+                val imageUri = data.getStringExtra("imageUri")
+                if (imageUri != null && imageUri.startsWith("content://")) {
+                    try {
+                        val uri = imageUri.toUri()
+                        contentResolver.takePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                        try {
+                            val inputStream = contentResolver.openInputStream(uri)
+                            if (inputStream == null) {
+                                android.widget.Toast.makeText(this, "Image URI not accessible", android.widget.Toast.LENGTH_LONG).show()
+                            } else {
+                                inputStream.close()
+                            }
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(this, "Cannot open image: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    } catch (e: SecurityException) {
+                        e.printStackTrace()
+                        android.widget.Toast.makeText(this, "Permission error: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
                 val ingredientType = object : TypeToken<List<Ingredient>>() {}.type
                 val ingredients: List<Ingredient> = Gson().fromJson(ingredientsJson, ingredientType)
                 val newId = (recipes.maxOfOrNull { it.id } ?: 0) + 1
@@ -45,7 +69,8 @@ class MainActivity : ComponentActivity() {
                         newId,
                         name,
                         ingredients,
-                        directions
+                        directions,
+                        imageUri = imageUri
                     )
                 )
             }
