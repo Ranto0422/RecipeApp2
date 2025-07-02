@@ -25,6 +25,16 @@ class MainActivity : ComponentActivity() {
             Ingredient("Lettuce", "1", "head"),
             Ingredient("Tomato", "2", "pieces"),
             Ingredient("Cucumber", "1", "piece")
+        ), "Chop and mix.", imageUri = "android.resource://com.example.recipeapp/drawable/sample_salad"),
+            Recipe(3, "Salad", listOf(
+            Ingredient("Lettuce", "1", "head"),
+            Ingredient("Tomato", "2", "pieces"),
+            Ingredient("Cucumber", "1", "piece")
+        ), "Chop and mix.", imageUri = "android.resource://com.example.recipeapp/drawable/sample_salad"),
+        Recipe(4, "Salad", listOf(
+            Ingredient("Lettuce", "1", "head"),
+            Ingredient("Tomato", "2", "pieces"),
+            Ingredient("Cucumber", "1", "piece")
         ), "Chop and mix.", imageUri = "android.resource://com.example.recipeapp/drawable/sample_salad")
     )
 
