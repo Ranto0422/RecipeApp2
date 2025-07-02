@@ -1,8 +1,10 @@
 package com.example.recipeapp.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -54,8 +56,23 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Arrangement.spacedBy
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.foundation.background
+import androidx.compose.material3.FilterChipDefaults
 
-@OptIn(ExperimentalMaterial3Api::class)
+//this are for the ui components
+//this is from gemini kasi di ako marunong mag ui lol sabi lng ni gemini gamitin toh -ryan
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun RecipeListScreen(
     recipes: List<Recipe>,
@@ -65,7 +82,17 @@ fun RecipeListScreen(
     onPantryClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
 ) {
-    val expandedStates = remember { mutableStateMapOf<Int, Boolean>() }
+
+    var filterSectionExpanded by remember { mutableStateOf(false) }
+    var selectedMainIngredient by remember { mutableStateOf<String?>(null) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var selectedGeneralIngredient by remember { mutableStateOf<String?>(null) }
+
+    // FILTERSS contents
+    val mainIngredients = listOf("Chicken", "Beef", "Fish", "Pork", "Vegetarian")
+    val categories = listOf("Seafood", "Fried", "Soup", "Salad", "Dessert")
+    val generalIngredients = listOf("Eggs", "Milk", "Flour", "Sugar", "Salt")
+
     Scaffold(
         bottomBar = {
             Surface(
@@ -132,6 +159,7 @@ fun RecipeListScreen(
         val listState = rememberLazyListState()
         val coroutineScope = rememberCoroutineScope()
         val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -143,38 +171,171 @@ fun RecipeListScreen(
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
-                    top = if (isAtTop) 0.dp else 16.dp,
+                    top = if (isAtTop) 0.dp else 16.dp, // Only add top padding if search/filter is hidden
                     bottom = 16.dp
                 )
             ) {
                 item {
+                    // Search and Filter Sectionk
                     AnimatedVisibility(
-                        visible = isAtTop,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
+                        visible = isAtTop, // Show this section only when scrolled to top
+                        enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+                        exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 8.dp)
                     ) {
-                        SearchBar(
-                            query = searchQuery,
-                            onQueryChange = { searchQuery = it },
-                            onSearch = {},
-                            active = false,
-                            onActiveChange = {},
-                            placeholder = { Text("Search recipes...") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(MaterialTheme.shapes.extraLarge)
-                                ,
-                            colors = SearchBarDefaults.colors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                dividerColor = MaterialTheme.colorScheme.outline
-                            )
-                        ) {}
+                        Column {
+                            // SearchBar
+                            SearchBar(
+                                query = searchQuery,
+                                onQueryChange = { searchQuery = it },
+                                onSearch = {},
+                                active = false,
+                                onActiveChange = {},
+                                placeholder = { Text("Search recipes...") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(MaterialTheme.shapes.extraLarge),
+                                colors = SearchBarDefaults.colors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+
+                                )
+                            ) {}
+
+                            Spacer(modifier = Modifier.height(8.dp)) // Spacing between search bar and filter buttonzzz
+
+                            // Filter Buttonto expand/collapse filter options
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                IconButton(
+                                    onClick = { filterSectionExpanded = !filterSectionExpanded },
+                                    modifier = Modifier.size(48.dp) // Slightly larger touch target
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.FilterList,
+                                        contentDescription = if (filterSectionExpanded) "Hide Filters" else "Show Filters",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(28.dp) // Icon size
+                                    )
+                                }
+                            }
+
+                            // Animated Filter Optionz yeh
+                            AnimatedVisibility(
+                                visible = filterSectionExpanded,
+                                enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+                                exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp) // Padding for the whole filter box
+                                        .clip(MaterialTheme.shapes.medium) // Rounded corners for the box
+                                        .background(MaterialTheme.colorScheme.surfaceVariant) // Background for the filter box
+                                        .padding(16.dp) // Internal padding for the filter box
+                                ) {
+                                    Text("Main Ingredient", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = spacedBy(8.dp),
+                                        verticalArrangement = spacedBy(8.dp)
+                                    ) {
+                                        mainIngredients.forEach { ingredient ->
+                                            FilterChip(
+                                                selected = selectedMainIngredient == ingredient,
+                                                onClick = {
+                                                    selectedMainIngredient = if (selectedMainIngredient == ingredient) null else ingredient
+                                                },
+                                                label = { Text(ingredient) },
+                                                leadingIcon = if (selectedMainIngredient == ingredient) {
+                                                    { Icon(Icons.Filled.Done, contentDescription = "Selected", Modifier.size(FilterChipDefaults.IconSize)) }
+                                                } else null
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    HorizontalDivider()
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Text("Category", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = spacedBy(8.dp),
+                                        verticalArrangement = spacedBy(8.dp)
+                                    ) {
+                                        categories.forEach { category ->
+                                            FilterChip(
+                                                selected = selectedCategory == category,
+                                                onClick = {
+                                                    selectedCategory = if (selectedCategory == category) null else category
+                                                },
+                                                label = { Text(category) },
+                                                leadingIcon = if (selectedCategory == category) {
+                                                    { Icon(Icons.Filled.Done, contentDescription = "Selected", Modifier.size(FilterChipDefaults.IconSize)) }
+                                                } else null
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    HorizontalDivider()
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Text("General Ingredient", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = spacedBy(8.dp),
+                                        verticalArrangement = spacedBy(8.dp)
+                                    ) {
+                                        generalIngredients.forEach { ingredient ->
+                                            FilterChip(
+                                                selected = selectedGeneralIngredient == ingredient,
+                                                onClick = {
+                                                    selectedGeneralIngredient = if (selectedGeneralIngredient == ingredient) null else ingredient
+                                                },
+                                                label = { Text(ingredient) },
+                                                leadingIcon = if (selectedGeneralIngredient == ingredient) {
+                                                    { Icon(Icons.Filled.Done, contentDescription = "Selected", Modifier.size(FilterChipDefaults.IconSize)) }
+                                                } else null
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    HorizontalDivider()
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    OutlinedButton(
+                                        onClick = {
+                                            selectedMainIngredient = null
+                                            selectedCategory = null
+                                            selectedGeneralIngredient = null
+                                            filterSectionExpanded = false // Collapse after clearing the filterz
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Clear All Filters")
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-                items(recipes.filter { it.title.contains(searchQuery, ignoreCase = true) || searchQuery.isBlank() }) { recipe ->
+                // Filtered recipes
+                items(recipes.filter {
+                    (it.title.contains(searchQuery, ignoreCase = true) || searchQuery.isBlank()) &&
+                            (selectedMainIngredient == null || it.ingredients.any { ing -> ing.name.equals(selectedMainIngredient, ignoreCase = true) }) &&
+                            (selectedCategory == null || it.title.contains(selectedCategory!!, ignoreCase = true)) && // Assuming category is in title
+                            (selectedGeneralIngredient == null || it.ingredients.any { ing -> ing.name.equals(selectedGeneralIngredient, ignoreCase = true) })
+                }) { recipe ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -187,7 +348,7 @@ fun RecipeListScreen(
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = spacedBy(10.dp)
                         ) {
                             if (recipe.imageUri != null) {
                                 Image(
@@ -220,6 +381,7 @@ fun RecipeListScreen(
                     }
                 }
             }
+            // Floating Action Button for Search when not at top
             AnimatedVisibility(
                 visible = !isAtTop,
                 enter = fadeIn(),
@@ -231,6 +393,7 @@ fun RecipeListScreen(
                 FloatingActionButton(
                     onClick = {
                         coroutineScope.launch {
+                            // Scrolls to the top to show search/filter.. CHANGE THIS SO IT GOES TO SEARCH SCREEN
                             listState.animateScrollToItem(0)
                         }
                     },
@@ -251,27 +414,26 @@ fun RecipeListScreen(
 fun RecipeListScreenPreview() {
     val sampleIngredients = listOf(
         Ingredient("Flour", "2", "cups"),
-        Ingredient("Sugar", "1", "cup")
+        Ingredient("Sugar", "1", "cup"),
+        Ingredient("Chicken", "500", "g"),
+        Ingredient("Carrots", "2", "pcs"),
+        Ingredient("Eggs", "3", ""),
+        Ingredient("Beef", "1", "kg")
     )
     val sampleRecipes = listOf(
         Recipe(
             id = 1,
             title = "Pancakes",
-            ingredients = sampleIngredients,
+            ingredients = listOf(Ingredient("Flour", "2", "cups"), Ingredient("Eggs", "2", "")),
             directions = "Mix all ingredients and cook on a skillet."
         ),
-        Recipe(
-            id = 2,
-            title = "Waffles",
-            ingredients = sampleIngredients,
-            directions = "Mix all ingredients and cook in a waffle iron."
+
+    )
+    MaterialTheme { // Wrap in MaterialTheme for preview
+        RecipeListScreen(
+            recipes = sampleRecipes,
+            onAddRecipe = {},
+            onRecipeClick = {}
         )
-
-
-    )
-    RecipeListScreen(
-        recipes = sampleRecipes,
-        onAddRecipe = {},
-        onRecipeClick = {}
-    )
+    }
 }
