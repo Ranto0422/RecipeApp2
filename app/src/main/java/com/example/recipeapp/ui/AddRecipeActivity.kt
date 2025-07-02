@@ -136,6 +136,22 @@ fun AddRecipeScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
+                        // Move Pick Image button and image preview to the top
+                        Button(onClick = { imagePickerLauncher.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Pick Image")
+                        }
+                        imageUri?.let {
+                            Image(
+                                painter = rememberAsyncImagePainter(it),
+                                contentDescription = "Recipe Image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
+                                    .clip(MaterialTheme.shapes.medium),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
                         OutlinedTextField(
                             value = name,
                             onValueChange = { name = it },
@@ -213,21 +229,6 @@ fun AddRecipeScreen(
                             shape = MaterialTheme.shapes.medium,
                             minLines = 3
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { imagePickerLauncher.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
-                            Text("Pick Image")
-                        }
-                        imageUri?.let {
-                            Image(
-                                painter = rememberAsyncImagePainter(it),
-                                contentDescription = "Recipe Image",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(180.dp)
-                                    .clip(MaterialTheme.shapes.medium),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = { onSave?.invoke(name, ingredients, directions, imageUri?.toString()) },
