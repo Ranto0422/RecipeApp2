@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
@@ -24,6 +25,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import com.example.recipeapp.model.Ingredient
 import com.google.gson.Gson
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateListOf
@@ -32,9 +35,21 @@ import androidx.compose.ui.Alignment
 import coil.compose.rememberAsyncImagePainter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContract
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.net.toUri
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
-// grants permission for the image to be displayed in the detail activity pare
+// grants permission for the image to be displayed in the detail activity pare idk pano nagana toh tho
 class GetContentWithPersistablePermission : ActivityResultContract<String, Uri?>() {
     override fun createIntent(context: android.content.Context, input: String): Intent {
         return Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -82,94 +97,148 @@ fun AddRecipeScreen(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(16.dp)
+            .padding(0.dp)
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { onBack?.invoke() }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Add Recipe", modifier = Modifier.padding(bottom = 16.dp))
-        }
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Name") },
+        Surface(
+            tonalElevation = 4.dp,
+            shadowElevation = 4.dp,
+            color = MaterialTheme.colorScheme.surface,
             modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text("Ingredients", modifier = Modifier.padding(vertical = 8.dp))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
-                value = ingredientName,
-                onValueChange = { ingredientName = it },
-                label = { Text("Name") },
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            OutlinedTextField(
-                value = ingredientQty,
-                onValueChange = { ingredientQty = it },
-                label = { Text("Qty") },
-                modifier = Modifier.width(80.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            OutlinedTextField(
-                value = ingredientUnit,
-                onValueChange = { ingredientUnit = it },
-                label = { Text("Unit") },
-                modifier = Modifier.width(80.dp)
-            )
-        }
-        Button(
-            onClick = {
-                if (ingredientName.isNotBlank() && ingredientQty.isNotBlank()) {
-                    val ing = Ingredient(ingredientName, ingredientQty, ingredientUnit)
-                    ingredients.add(ing)
-                    ingredientName = ""
-                    ingredientQty = ""
-                    ingredientUnit = ""
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+            ) {
+                IconButton(onClick = { onBack?.invoke() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-            },
-            enabled = ingredientName.isNotBlank() && ingredientQty.isNotBlank(),
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            Text("Add Ingredient")
-        }
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            ingredients.forEach { ing ->
-                Text("${ing.name} - ${ing.quantity} ${ing.unit}")
+                Text(
+                    text = "Add Recipe",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.padding(start = 8.dp)
+                )
             }
         }
-        OutlinedTextField(
-            value = directions,
-            onValueChange = { directions = it },
-            label = { Text("Directions") },
-            modifier = Modifier.fillMaxWidth()
-        )
         Spacer(modifier = Modifier.height(8.dp))
-        Button(onClick = { imagePickerLauncher.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
-            Text("Pick Image")
-        }
-        imageUri?.let {
-            Image(
-                painter = rememberAsyncImagePainter(it),
-                contentDescription = "Recipe Image",
+        Box(modifier = Modifier.weight(1f, fill = true)) {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp),
-                contentScale = ContentScale.Crop
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = {
-                onSave?.invoke(name, ingredients, directions, imageUri?.toString())
-            },
-            enabled = name.isNotBlank() && ingredients.isNotEmpty() && directions.isNotBlank(),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Save")
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .shadow(8.dp, MaterialTheme.shapes.large),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text("Recipe Name") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Ingredients", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = ingredientName,
+                                onValueChange = { ingredientName = it },
+                                label = { Text("Name") },
+                                modifier = Modifier.weight(1f),
+                                shape = MaterialTheme.shapes.medium
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedTextField(
+                                value = ingredientQty,
+                                onValueChange = { ingredientQty = it },
+                                label = { Text("Qty") },
+                                modifier = Modifier.width(80.dp),
+                                shape = MaterialTheme.shapes.medium
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedTextField(
+                                value = ingredientUnit,
+                                onValueChange = { ingredientUnit = it },
+                                label = { Text("Unit") },
+                                modifier = Modifier.width(80.dp),
+                                shape = MaterialTheme.shapes.medium
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                if (ingredientName.isNotBlank() && ingredientQty.isNotBlank()) {
+                                    val ing = Ingredient(ingredientName, ingredientQty, ingredientUnit)
+                                    ingredients.add(ing)
+                                    ingredientName = ""
+                                    ingredientQty = ""
+                                    ingredientUnit = ""
+                                }
+                            },
+                            enabled = ingredientName.isNotBlank() && ingredientQty.isNotBlank(),
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text("Add Ingredient")
+                        }
+                        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                            ingredients.forEach { ing ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${ing.name} - ${ing.quantity} ${ing.unit}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    IconButton(onClick = { ingredients.remove(ing) }) {
+                                        Icon(Icons.Filled.Delete, contentDescription = "Remove Ingredient")
+                                    }
+                                }
+                                HorizontalDivider()
+                            }
+                        }
+                        OutlinedTextField(
+                            value = directions,
+                            onValueChange = { directions = it },
+                            label = { Text("Directions") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium,
+                            minLines = 3
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { imagePickerLauncher.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Pick Image")
+                        }
+                        imageUri?.let {
+                            Image(
+                                painter = rememberAsyncImagePainter(it),
+                                contentDescription = "Recipe Image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
+                                    .clip(MaterialTheme.shapes.medium),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { onSave?.invoke(name, ingredients, directions, imageUri?.toString()) },
+                            enabled = name.isNotBlank() && ingredients.isNotEmpty() && directions.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Save Recipe")
+                        }
+                    }
+                }
+            }
         }
     }
 }
