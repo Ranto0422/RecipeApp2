@@ -136,7 +136,6 @@ fun AddRecipeScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
-                        // Move Pick Image button and image preview to the top
                         Button(onClick = { imagePickerLauncher.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
                             Text("Pick Image")
                         }

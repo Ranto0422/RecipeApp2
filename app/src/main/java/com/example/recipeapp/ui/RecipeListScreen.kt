@@ -109,7 +109,7 @@ fun RecipeListScreen(
                         Icon(
                             imageVector = Icons.Filled.Home,
                             contentDescription = "Home",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -120,7 +120,7 @@ fun RecipeListScreen(
                         Icon(
                             imageVector = Icons.Filled.Add,
                             contentDescription = "Add Recipe",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -131,7 +131,7 @@ fun RecipeListScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.List,
                             contentDescription = "Pantry",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -142,7 +142,7 @@ fun RecipeListScreen(
                         Icon(
                             imageVector = Icons.Filled.Person,
                             contentDescription = "User Profile",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -181,51 +181,54 @@ fun RecipeListScreen(
                             .padding(bottom = 8.dp)
                     ) {
                         Column {
-                            // SearchBar
-                            SearchBar(
-                                query = searchQuery,
-                                onQueryChange = { searchQuery = it },
-                                onSearch = {},
-                                active = false,
-                                onActiveChange = {},
-                                placeholder = { Text("Search recipes...") },
+                            // SearchBar and Filter Button in a Row
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(MaterialTheme.shapes.extraLarge),
-                                colors = SearchBarDefaults.colors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                )
-                            ) {}
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // Filter Button and Active Filter Count
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End, // Align to end by default
+                                    .padding(bottom = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Display active filters count on the left side
-                                if (numActiveFilters > 0) {
-                                    Text(
-                                        text = "$numActiveFilters Active Filter${if (numActiveFilters > 1) "s" else ""}",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier
-                                            .align(Alignment.CenterVertically)
-                                            .padding(end = 8.dp) // Space between text and icon
+                                // SearchBar
+                                SearchBar(
+                                    query = searchQuery,
+                                    onQueryChange = { searchQuery = it },
+                                    onSearch = {},
+                                    active = false,
+                                    onActiveChange = {},
+                                    placeholder = { Text("Search recipes...") },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(MaterialTheme.shapes.extraLarge),
+                                    colors = SearchBarDefaults.colors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                     )
-                                }
-                                IconButton(
-                                    onClick = { filterSectionExpanded = !filterSectionExpanded },
-                                    modifier = Modifier.size(48.dp)
+                                ) {}
+
+                                // Filter Button and Active Filter Count
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.FilterList,
-                                        contentDescription = if (filterSectionExpanded) "Hide Filters" else "Show Filters",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(28.dp)
-                                    )
+                                    if (numActiveFilters > 0) {
+                                        Text(
+                                            text = "$numActiveFilters Active Filter${if (numActiveFilters > 1) "s" else ""}",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier
+                                                .align(Alignment.CenterVertically)
+                                                .padding(start = 8.dp, end = 8.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { filterSectionExpanded = !filterSectionExpanded },
+                                        modifier = Modifier.size(48.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.FilterList,
+                                            contentDescription = if (filterSectionExpanded) "Hide Filters" else "Show Filters",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
                                 }
                             }
 
@@ -380,7 +383,7 @@ fun RecipeListScreen(
                             Text(
                                 text = recipe.title,
                                 style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                             )
                         }
