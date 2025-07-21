@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.material3.Text
 import com.example.recipeapp.model.Recipe
 import com.example.recipeapp.ui.RecipeListScreen
 import androidx.compose.runtime.mutableStateListOf
@@ -11,32 +12,15 @@ import com.example.recipeapp.model.Ingredient
 import com.google.gson.reflect.TypeToken
 import com.google.gson.Gson
 import androidx.core.net.toUri
+import com.google.accompanist.navigation.animation.AnimatedNavHost
+import com.google.accompanist.navigation.animation.composable
+import com.google.accompanist.navigation.animation.rememberAnimatedNavController
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.navigation.compose.rememberNavController
+import com.example.recipeapp.ui.RecipeDetailScreen
 
+@OptIn(ExperimentalAnimationApi::class)
 class MainActivity : ComponentActivity() {
-
-    // Sample data for demonstration purposez ito yung need palatan using db and api
-    private val recipes = mutableStateListOf(
-        Recipe(1, "Pancakes", listOf(
-            Ingredient("Flour", "100", "grams"),
-            Ingredient("Eggs", "2", "pieces"),
-            Ingredient("Milk", "200", "ml")
-        ), "Mix and cook.", imageUri = "android.resource://com.example.recipeapp/drawable/sample_pancake"),
-        Recipe(2, "Salad", listOf(
-            Ingredient("Lettuce", "1", "head"),
-            Ingredient("Tomato", "2", "pieces"),
-            Ingredient("Cucumber", "1", "piece")
-        ), "Chop and mix.", imageUri = "android.resource://com.example.recipeapp/drawable/sample_salad"),
-            Recipe(3, "Salad", listOf(
-            Ingredient("Lettuce", "1", "head"),
-            Ingredient("Tomato", "2", "pieces"),
-            Ingredient("Cucumber", "1", "piece")
-        ), "Chop and mix.", imageUri = "android.resource://com.example.recipeapp/drawable/sample_salad"),
-        Recipe(4, "Salad", listOf(
-            Ingredient("Lettuce", "1", "head"),
-            Ingredient("Tomato", "2", "pieces"),
-            Ingredient("Cucumber", "1", "piece")
-        ), "Chop and mix.", imageUri = "android.resource://com.example.recipeapp/drawable/sample_salad")
-    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,31 +57,42 @@ class MainActivity : ComponentActivity() {
                 }
                 val ingredientType = object : TypeToken<List<Ingredient>>() {}.type
                 val ingredients: List<Ingredient> = Gson().fromJson(ingredientsJson, ingredientType)
-                val newId = (recipes.maxOfOrNull { it.id } ?: 0) + 1
-                recipes.add(
-                    Recipe(
-                        newId,
-                        name,
-                        ingredients,
-                        directions,
-                        imageUri = imageUri
-                    )
-                )
+                // Here you would typically add the new recipe to your API or database
             }
         }
         setContent {
-            RecipeListScreen(
-                recipes = recipes,
-                onAddRecipe = {
-                    val intent = Intent(this, com.example.recipeapp.ui.AddRecipeActivity::class.java)
-                    addRecipeLauncher.launch(intent)
-                },
-                onRecipeClick = { recipe ->
-                    val intent = Intent(this, com.example.recipeapp.ui.RecipeDetailActivity::class.java)
-                    intent.putExtra("recipe_json", Gson().toJson(recipe))
-                    startActivity(intent)
+            val navController = rememberAnimatedNavController()
+            AnimatedNavHost(
+                navController = navController,
+                startDestination = "list"
+            ) {
+                composable(
+                    "list"
+                ) {
+                    RecipeListScreen(
+                        onAddRecipe = {
+                            val intent = Intent(this@MainActivity, com.example.recipeapp.ui.AddRecipeActivity::class.java)
+                            addRecipeLauncher.launch(intent)
+                        },
+                        onRecipeClick = { recipe ->
+                            navController.navigate("detail/${recipe.id}")
+                        }
+                    )
                 }
-            )
+                composable(
+                    "detail/{recipeId}"
+                ) { backStackEntry ->
+                    val recipeId = backStackEntry.arguments?.getString("recipeId")?.toIntOrNull()
+                    if (recipeId != null) {
+                        RecipeDetailScreen(
+                            recipeId = recipeId,
+                            onBack = { navController.popBackStack() }
+                        )
+                    } else {
+                        Text("Invalid recipe ID")
+                    }
+                }
+            }
         }
     }
 }

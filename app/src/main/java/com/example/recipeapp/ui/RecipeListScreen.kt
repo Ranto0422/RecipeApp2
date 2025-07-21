@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateMapOf
 import com.example.recipeapp.model.Recipe
 import com.example.recipeapp.model.Ingredient
+import com.example.recipeapp.model.DummyRecipe
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
@@ -63,25 +64,75 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import android.content.Intent
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.URL
+import com.example.recipeapp.util.*
 
-//this are for the ui components
-//this is from gemini kasi di ako marunong mag ui lol sabi lng ni gemini gamitin toh -ryan
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun RecipeListScreen(
-    recipes: List<Recipe>,
     onAddRecipe: () -> Unit,
-    onRecipeClick: (Recipe) -> Unit,
+    onRecipeClick: (DummyRecipe) -> Unit,
     onHomeClick: () -> Unit = {},
     onPantryClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var selectedMainIngredient by remember { mutableStateOf<String?>(null) }
-    var selectedCategory by remember { mutableStateOf<String?>(null) }
-    var selectedGeneralIngredient by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    var recipes by remember { mutableStateOf<List<DummyRecipe>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
 
+    // Fetch recipes from DummyJSON API
+    LaunchedEffect(Unit) {
+        isLoading = true
+        try {
+            val response = withContext(Dispatchers.IO) {
+                URL("https://dummyjson.com/recipes").readText()
+            }
+            val json = JSONObject(response)
+            val arr = json.getJSONArray("recipes")
+            val list = mutableListOf<DummyRecipe>()
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                list.add(
+                    DummyRecipe(
+                        id = obj.getInt("id"),
+                        name = obj.getString("name"),
+                        ingredients = obj.getJSONArray("ingredients").toStringList(),
+                        instructions = obj.getJSONArray("instructions").toStringList(),
+                        prepTimeMinutes = obj.optIntOrNull("prepTimeMinutes"),
+                        cookTimeMinutes = obj.optIntOrNull("cookTimeMinutes"),
+                        servings = obj.optIntOrNull("servings"),
+                        difficulty = obj.optStringOrNull("difficulty"),
+                        cuisine = obj.optStringOrNull("cuisine"),
+                        caloriesPerServing = obj.optIntOrNull("caloriesPerServing"),
+                        tags = obj.optJSONArrayOrNull("tags")?.toStringList(),
+                        userId = obj.optIntOrNull("userId"),
+                        image = obj.optStringOrNull("image"),
+                        rating = obj.optDoubleOrNull("rating"),
+                        reviewCount = obj.optIntOrNull("reviewCount"),
+                        mealType = obj.optJSONArrayOrNull("mealType")?.toStringList()
+                    )
+                )
+            }
+            recipes = list
+        } catch (e: Exception) {
+            errorMessage = "Failed to load recipes."
+            e.printStackTrace()
+        } finally {
+            isLoading = false
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -110,8 +161,7 @@ fun RecipeListScreen(
                     }
                     IconButton(
                         onClick = {
-                            // Launch SearchActivity
-                            context.startActivity(Intent(context, SearchActivity::class.java))
+                            // Optionally, you can add a search screen for DummyJSON
                         },
                         modifier = Modifier.size(56.dp)
                     ) {
@@ -159,108 +209,53 @@ fun RecipeListScreen(
             }
         }
     ) { innerPadding ->
-        var searchQuery by remember { mutableStateOf("") }
-        val listState = rememberLazyListState()
-        val coroutineScope = rememberCoroutineScope()
-        val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = 0.dp,
-                    bottom = 16.dp
-                )
-            ) {
-                // Filtered recipes
-                items(recipes.filter {
-                    (it.title.contains(searchQuery, ignoreCase = true) || searchQuery.isBlank()) &&
-                            (selectedMainIngredient == null || it.ingredients.any { ing -> ing.name.equals(selectedMainIngredient, ignoreCase = true) }) &&
-                            // Adjusted category filter logic based on title content for demonstration
-                            (selectedCategory == null || it.title.contains(selectedCategory!!, ignoreCase = true)) &&
-                            (selectedGeneralIngredient == null || it.ingredients.any { ing -> ing.name.equals(selectedGeneralIngredient, ignoreCase = true) })
-                }) { recipe ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                            .clickable { onRecipeClick(recipe) }
-                            .shadow(6.dp, shape = MaterialTheme.shapes.medium)
-                            .clip(MaterialTheme.shapes.medium),
-                        elevation = CardDefaults.cardElevation(0.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = spacedBy(10.dp)
-                        ) {
-                            if (recipe.imageUri != null) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(recipe.imageUri),
-                                    contentDescription = "Recipe Image",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(160.dp)
-                                        .clip(MaterialTheme.shapes.medium),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Image(
-                                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                                    contentDescription = "Placeholder Image",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(160.dp)
-                                        .clip(MaterialTheme.shapes.medium),
-                                    contentScale = ContentScale.Crop
-                                )
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (errorMessage != null) {
+                Text(errorMessage!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+
+                    val filtered = if (searchQuery.isBlank()) recipes else recipes.filter {
+                        it.name.contains(searchQuery, ignoreCase = true) ||
+                        it.ingredients.any { ing -> ing.contains(searchQuery, ignoreCase = true) }
+                    }
+                    LazyColumn(modifier = Modifier.weight(1f)) {
+                        items(filtered) { recipe ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp)
+                                    .clickable { onRecipeClick(recipe) },
+                                elevation = CardDefaults.cardElevation(2.dp)
+                            ) {
+                                Row(modifier = Modifier.padding(8.dp)) {
+                                    recipe.image?.let { img ->
+                                        Image(
+                                            painter = rememberAsyncImagePainter(img),
+                                            contentDescription = recipe.name,
+                                            modifier = Modifier.size(64.dp).clip(MaterialTheme.shapes.medium),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(recipe.name, style = MaterialTheme.typography.titleMedium)
+                                        recipe.cuisine?.let { Text("Cuisine: $it", style = MaterialTheme.typography.bodySmall) }
+                                        recipe.difficulty?.let { Text("Difficulty: $it", style = MaterialTheme.typography.bodySmall) }
+                                        recipe.tags?.let { Text("Tags: ${it.joinToString(", ")}", style = MaterialTheme.typography.bodySmall) }
+                                    }
+                                }
                             }
-                            Text(
-                                text = recipe.title,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                            )
                         }
                     }
                 }
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun RecipeListScreenPreview() {
-    val sampleIngredients = listOf(
-        Ingredient("Flour", "2", "cups"),
-        Ingredient("Sugar", "1", "cup"),
-        Ingredient("Chicken", "500", "g"),
-        Ingredient("Carrots", "2", "pcs"),
-        Ingredient("Eggs", "3", ""),
-        Ingredient("Beef", "1", "kg")
-    )
-    val sampleRecipes = listOf(
-        Recipe(
-            id = 1,
-            title = "Pancakes",
-            ingredients = listOf(Ingredient("Flour", "2", "cups"), Ingredient("Eggs", "2", "")),
-            directions = "Mix all ingredients and cook on a skillet."
-        ),
-
-    )
-    MaterialTheme { // Wrap in MaterialTheme for preview
-        RecipeListScreen(
-            recipes = sampleRecipes,
-            onAddRecipe = {},
-            onRecipeClick = {}
-        )
     }
 }
