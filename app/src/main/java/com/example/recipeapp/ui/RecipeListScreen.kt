@@ -82,6 +82,9 @@ import com.example.recipeapp.util.*
 fun RecipeListScreen(
     onAddRecipe: () -> Unit,
     onRecipeClick: (DummyRecipe) -> Unit,
+    onLuckyClick: () -> Unit, // <-- im Feeling Lucky
+    isLuckyLoading: Boolean = false,
+    luckyError: String? = null,
     onHomeClick: () -> Unit = {},
     onPantryClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
@@ -90,7 +93,9 @@ fun RecipeListScreen(
     var recipes by remember { mutableStateOf<List<DummyRecipe>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var searchQuery by remember { mutableStateOf("") }
+    var isLuckyLoadingState by remember { mutableStateOf(false) }
+    var luckyErrorState by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     // Fetch recipes from DummyJSON API
     LaunchedEffect(Unit) {
@@ -219,14 +224,9 @@ fun RecipeListScreen(
             } else if (errorMessage != null) {
                 Text(errorMessage!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
             } else {
-                Column(modifier = Modifier.fillMaxSize()) {
-
-                    val filtered = if (searchQuery.isBlank()) recipes else recipes.filter {
-                        it.name.contains(searchQuery, ignoreCase = true) ||
-                        it.ingredients.any { ing -> ing.contains(searchQuery, ignoreCase = true) }
-                    }
-                    LazyColumn(modifier = Modifier.weight(1f)) {
-                        items(filtered) { recipe ->
+                Box(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(recipes) { recipe ->
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -253,6 +253,22 @@ fun RecipeListScreen(
                                 }
                             }
                         }
+                    }
+                    // IM feeeling lucky button
+                    FloatingActionButton(
+                        onClick = onLuckyClick,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(bottom = 80.dp, end = 24.dp)
+                    ) {
+                        if (isLuckyLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        } else {
+                            Text("I'm Feeling Lucky")
+                        }
+                    }
+                    luckyError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 140.dp))
                     }
                 }
             }

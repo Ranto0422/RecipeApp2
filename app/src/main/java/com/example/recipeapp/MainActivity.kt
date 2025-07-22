@@ -18,6 +18,14 @@ import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.navigation.compose.rememberNavController
 import com.example.recipeapp.ui.RecipeDetailScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.URL
+import androidx.compose.runtime.*
+import com.example.recipeapp.model.DummyRecipe
+import com.example.recipeapp.util.*
 
 @OptIn(ExperimentalAnimationApi::class)
 class MainActivity : ComponentActivity() {
@@ -62,6 +70,54 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             val navController = rememberAnimatedNavController()
+            var isLuckyLoading by remember { mutableStateOf(false) }
+            var luckyError by remember { mutableStateOf<String?>(null) }
+            var recipes by remember { mutableStateOf<List<DummyRecipe>>(emptyList()) }
+            var isLoading by remember { mutableStateOf(false) }
+            var errorMessage by remember { mutableStateOf<String?>(null) }
+            val coroutineScope = rememberCoroutineScope()
+
+            // Fetch recipes from DummyJSON API (once)
+            LaunchedEffect(Unit) {
+                isLoading = true
+                try {
+                    val response = withContext(Dispatchers.IO) {
+                        URL("https://dummyjson.com/recipes").readText()
+                    }
+                    val json = JSONObject(response)
+                    val arr = json.getJSONArray("recipes")
+                    val list = mutableListOf<DummyRecipe>()
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        list.add(
+                            DummyRecipe(
+                                id = obj.getInt("id"),
+                                name = obj.getString("name"),
+                                ingredients = obj.getJSONArray("ingredients").toStringList(),
+                                instructions = obj.getJSONArray("instructions").toStringList(),
+                                prepTimeMinutes = obj.optIntOrNull("prepTimeMinutes"),
+                                cookTimeMinutes = obj.optIntOrNull("cookTimeMinutes"),
+                                servings = obj.optIntOrNull("servings"),
+                                difficulty = obj.optStringOrNull("difficulty"),
+                                cuisine = obj.optStringOrNull("cuisine"),
+                                caloriesPerServing = obj.optIntOrNull("caloriesPerServing"),
+                                tags = obj.optJSONArrayOrNull("tags")?.toStringList(),
+                                userId = obj.optIntOrNull("userId"),
+                                image = obj.optStringOrNull("image"),
+                                rating = obj.optDoubleOrNull("rating"),
+                                reviewCount = obj.optIntOrNull("reviewCount"),
+                                mealType = obj.optJSONArrayOrNull("mealType")?.toStringList()
+                            )
+                        )
+                    }
+                    recipes = list
+                } catch (e: Exception) {
+                    errorMessage = "Failed to load recipes."
+                    e.printStackTrace()
+                } finally {
+                    isLoading = false
+                }
+            }
             AnimatedNavHost(
                 navController = navController,
                 startDestination = "list"
@@ -76,7 +132,50 @@ class MainActivity : ComponentActivity() {
                         },
                         onRecipeClick = { recipe ->
                             navController.navigate("detail/${recipe.id}")
-                        }
+                        },
+                        onLuckyClick = {
+                            coroutineScope.launch {
+                                isLuckyLoading = true
+                                luckyError = null
+                                try {
+                                    val ids = recipes.map { it.id }
+                                    if (ids.isNotEmpty()) {
+                                        val randomId = ids.random()
+                                        val response = withContext(Dispatchers.IO) {
+                                            URL("https://dummyjson.com/recipes/$randomId").readText()
+                                        }
+                                        val obj = JSONObject(response)
+                                        val luckyRecipe = DummyRecipe(
+                                            id = obj.getInt("id"),
+                                            name = obj.getString("name"),
+                                            ingredients = obj.getJSONArray("ingredients").toStringList(),
+                                            instructions = obj.getJSONArray("instructions").toStringList(),
+                                            prepTimeMinutes = obj.optIntOrNull("prepTimeMinutes"),
+                                            cookTimeMinutes = obj.optIntOrNull("cookTimeMinutes"),
+                                            servings = obj.optIntOrNull("servings"),
+                                            difficulty = obj.optStringOrNull("difficulty"),
+                                            cuisine = obj.optStringOrNull("cuisine"),
+                                            caloriesPerServing = obj.optIntOrNull("caloriesPerServing"),
+                                            tags = obj.optJSONArrayOrNull("tags")?.toStringList(),
+                                            userId = obj.optIntOrNull("userId"),
+                                            image = obj.optStringOrNull("image"),
+                                            rating = obj.optDoubleOrNull("rating"),
+                                            reviewCount = obj.optIntOrNull("reviewCount"),
+                                            mealType = obj.optJSONArrayOrNull("mealType")?.toStringList()
+                                        )
+                                        navController.navigate("detail/${luckyRecipe.id}")
+                                    } else {
+                                        luckyError = "No recipes available."
+                                    }
+                                } catch (e: Exception) {
+                                    luckyError = "Failed to load random recipe."
+                                } finally {
+                                    isLuckyLoading = false
+                                }
+                            }
+                        },
+                        isLuckyLoading = isLuckyLoading,
+                        luckyError = luckyError
                     )
                 }
                 composable(
