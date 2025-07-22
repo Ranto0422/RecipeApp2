@@ -26,6 +26,7 @@ import java.net.URL
 import androidx.compose.runtime.*
 import com.example.recipeapp.model.DummyRecipe
 import com.example.recipeapp.util.*
+import com.example.recipeapp.ui.SearchScreen
 
 @OptIn(ExperimentalAnimationApi::class)
 class MainActivity : ComponentActivity() {
@@ -175,7 +176,18 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         isLuckyLoading = isLuckyLoading,
-                        luckyError = luckyError
+                        luckyError = luckyError,
+                        onSearchClick = { navController.navigate("search") }
+                    )
+                }
+                composable(
+                    "search"
+                ) {
+                    SearchScreen(
+                        onRecipeClick = { recipe ->
+                            navController.navigate("detail/${recipe.id}")
+                        },
+                        onBack = { navController.popBackStack() }
                     )
                 }
                 composable(

@@ -87,7 +87,8 @@ fun RecipeListScreen(
     luckyError: String? = null,
     onHomeClick: () -> Unit = {},
     onPantryClick: () -> Unit = {},
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    onSearchClick: () -> Unit = {} // <-- onSearchClick handler
 ) {
     val context = LocalContext.current
     var recipes by remember { mutableStateOf<List<DummyRecipe>>(emptyList()) }
@@ -165,9 +166,7 @@ fun RecipeListScreen(
                         )
                     }
                     IconButton(
-                        onClick = {
-                            // Optionally, you can add a search screen for DummyJSON
-                        },
+                        onClick = onSearchClick,
                         modifier = Modifier.size(56.dp)
                     ) {
                         Icon(
