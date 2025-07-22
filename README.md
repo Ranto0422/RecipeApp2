@@ -74,3 +74,31 @@ git clone https://github.com/Ranto0422/RecipeApp2.git
 - The app supports guest mode, admin approval, and user registration/login.
 - For full functionality, ensure your backend is running and accessible from your Android emulator/device.
 - You may need to adjust firewall or network settings for emulator-to-XAMPP communication.
+
+
+## TODO
+Issue
+Searchbar
+How to replicate
+input 'sa' in searchbar it will show failed to load
+then with 'sa' in the bar input 'L' this will load recipe with sal in the name
+then remove the 'L' again it will now show the recipe with sa where it did not before
+
+Improvement
+Remember location
+when i press a recipe in home then press back i want it to save the location to where i clicked the recipe
+
+Improvement
+User information
+add a registration success message
+
+improvement
+security issue
+when typing the password naka censor yung box but nakikita plain text sa text suggestion sa keyboard
+
+Improvement
+add validation for email,passwords, name duplcation and emailduplication in db
+
+Improvement
+if logged in as guest find a way to add a go to login screen instead of clicking other buttons to go to login
+
