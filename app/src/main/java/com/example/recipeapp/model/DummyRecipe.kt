@@ -16,6 +16,7 @@ data class DummyRecipe(
     val image: String?,
     val rating: Double?,
     val reviewCount: Int?,
-    val mealType: List<String>?
+    val mealType: List<String>?,
+    val isPublic: Boolean = false,
+    val isApproved: Boolean = false
 )
-
