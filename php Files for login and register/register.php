@@ -1,10 +1,6 @@
 <?php
 header('Content-Type: application/json');
-$conn = new mysqli('localhost', 'root', '', 'myrecipeapp');
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $conn->connect_error]);
-    exit;
-}
+require 'db.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
 error_log('Register data: ' . json_encode($data));
@@ -20,14 +16,12 @@ if (empty($name) || empty($email) || empty($password)) {
 
 $hashed = password_hash($password, PASSWORD_DEFAULT);
 
-$stmt = $conn->prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)');
-$stmt->bind_param('ssss', $name, $email, $hashed, $role);
-if ($stmt->execute()) {
-    echo json_encode(['success' => true, 'message' => 'User registered successfully']);
-} else {
-    echo json_encode(['success' => false, 'message' => 'User registration failed: ' . $stmt->error]);
+try {
+    $stmt = $db->prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)');
+    $stmt->execute([$name, $email, $hashed, $role]);
+    $userId = $db->lastInsertId();
+    echo json_encode(['success' => true, 'message' => 'User registered successfully', 'userId' => $userId]);
+} catch (PDOException $e) {
+    echo json_encode(['success' => false, 'message' => 'User registration failed: ' . $e->getMessage()]);
 }
-$stmt->close();
-$conn->close();
-?>]
-
+?>
