@@ -1,0 +1,9 @@
+<!-- IDK how this works yet but this fixes a error pload fail CLEARTEXT communication to 10.0.2.2 not permitted by network security policy mean when saving recipe
+-->
+
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain>10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
+

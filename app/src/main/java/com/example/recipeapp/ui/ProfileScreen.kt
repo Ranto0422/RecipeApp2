@@ -13,13 +13,14 @@ import coil.compose.rememberAsyncImagePainter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
+    userId: String? = null,
     userName: String = "User",
     userEmail: String = "user@email.com",
     userRole: String = "user",
     userImageUrl: String? = null,
     onLogout: () -> Unit = {},
     onHomeClick: () -> Unit = {},
-    onPantryClick: () -> Unit = {},
+    onMyRecipeClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onAddRecipe: () -> Unit = {},
@@ -32,7 +33,7 @@ fun ProfileScreen(
                 onHomeClick = onHomeClick,
                 onSearchClick = onSearchClick,
                 onAddRecipe = onAddRecipe,
-                onPantryClick = onPantryClick,
+                onMyRecipeClick = onMyRecipeClick,
                 onProfileClick = onProfileClick
             )
         }
@@ -59,6 +60,10 @@ fun ProfileScreen(
                     modifier = Modifier.size(96.dp)
                 )
                 Spacer(Modifier.height(16.dp))
+            }
+            if (userId != null) {
+                Text("User ID: $userId", style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.height(8.dp))
             }
             Text("Name: $userName", style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.height(8.dp))

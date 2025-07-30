@@ -16,12 +16,14 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 
+
+//Use this file to define the Bottom Navigation Bar for the Recipe App if you will add another screen that requires navigation.
 @Composable
 fun BottomNavBar(
     onHomeClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onAddRecipe: (() -> Unit)? = null,
-    onPantryClick: () -> Unit = {},
+    onMyRecipeClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
 ) {
     Surface(
@@ -72,12 +74,12 @@ fun BottomNavBar(
                 }
             }
             IconButton(
-                onClick = onPantryClick,
+                onClick = onMyRecipeClick,
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.List,
-                    contentDescription = "Pantry",
+                    contentDescription = "Recipes",
                     tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(32.dp)
                 )
@@ -96,4 +98,3 @@ fun BottomNavBar(
         }
     }
 }
-

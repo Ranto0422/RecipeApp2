@@ -30,15 +30,18 @@ import com.example.recipeapp.ui.AdminScreen
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
+import com.example.recipeapp.ui.MyRecipeScreen
+import com.example.recipeapp.ui.AddRecipeActivity
 
-@OptIn()
+
 class MainActivity : ComponentActivity() {
-
+    // Handles the result from AddRecipeActivity, including image URI permission and ingredient
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val addRecipeLauncher = registerForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
         ) { result ->
+            // Handles the result from AddRecipeActivity
             if (result.resultCode == RESULT_OK) {
                 val data = result.data
                 val ingredientsJson = data?.getStringExtra("ingredients_json") ?: return@registerForActivityResult
@@ -67,25 +70,28 @@ class MainActivity : ComponentActivity() {
                 }
                 val ingredientType = object : TypeToken<List<Ingredient>>() {}.type
                 val ingredients: List<Ingredient> = Gson().fromJson(ingredientsJson, ingredientType)
-                // Add recipe logic here
+                // TODO Add recipe logic here
             }
         }
         setContent {
+            // Main composable content, sets up navigation and state for the app
             val navController = rememberNavController()
-            var isLuckyLoading by remember { mutableStateOf(false) }
-            var luckyError by remember { mutableStateOf<String?>(null) }
-            var recipes by remember { mutableStateOf<List<DummyRecipe>>(emptyList()) }
-            var loggedInUser by remember { mutableStateOf<Map<String, String?>?>(null) }
-            var isGuest by remember { mutableStateOf(false) }
+            var isLuckyLoading by remember { mutableStateOf(false) } // Tracks loading state for "I'm Feeling Lucky" feature
+            var luckyError by remember { mutableStateOf<String?>(null) } // Stores error message for im feling lucky feature
+            var recipes by remember { mutableStateOf<List<DummyRecipe>>(emptyList()) } // Holds all loaded recipes
+            var loggedInUser by remember { mutableStateOf<Map<String, String?>?>(null) } // Stores logged in user info
+            var isGuest by remember { mutableStateOf(false) } // Tracks if user is a guest
             var showLoginPrompt by remember { mutableStateOf(false) }
             val context = LocalContext.current
             val coroutineScope = rememberCoroutineScope()
-            var pendingRecipes by remember { mutableStateOf<List<DummyRecipe>>(emptyList()) }
+            var pendingRecipes by remember { mutableStateOf<List<DummyRecipe>>(emptyList()) } // Recipes pending admin approval
 
+            // Updates pendingRecipes whenever recipes change
             LaunchedEffect(recipes) {
                 pendingRecipes = recipes.filter { it.isPublic && !it.isApproved }
             }
 
+            // Loadz recipes from remote API on first launch
             LaunchedEffect(Unit) {
                 try {
                     val response = withContext(Dispatchers.IO) {
@@ -133,6 +139,7 @@ class MainActivity : ComponentActivity() {
                                 if (result != null && result.optBoolean("success")) {
                                     val user = result.optJSONObject("user")
                                     loggedInUser = mapOf(
+                                        "userId" to user?.optString("userId"), // <-- use userId
                                         "name" to user?.optString("name", "User"),
                                         "email" to user?.optString("email", "user@email.com"),
                                         "role" to user?.optString("role", "user")
@@ -158,17 +165,24 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 composable("list") {
+                    val context = LocalContext.current
                     RecipeListScreen(
                         onAddRecipe = {
                             if (isGuest) {
                                 showLoginPrompt = true
                             } else {
-                                val intent = Intent(this@MainActivity, com.example.recipeapp.ui.AddRecipeActivity::class.java)
+                                val userId = loggedInUser?.get("userId")?.toIntOrNull() ?: -1
+                                val intent = Intent(context, AddRecipeActivity::class.java)
+                                intent.putExtra("userId", userId)
                                 addRecipeLauncher.launch(intent)
                             }
                         },
-                        onRecipeClick = { recipe: DummyRecipe ->
-                            navController.navigate("detail/${recipe.id}")
+                        onRecipeClick = { recipe: DummyRecipe, isUserRecipe: Boolean ->
+                            if (isUserRecipe && recipe.userId != null) {
+                                navController.navigate("userDetail/${recipe.id}/${recipe.userId}")
+                            } else {
+                                navController.navigate("detail/${recipe.id}")
+                            }
                         },
                         onLuckyClick = {
                             if (isGuest) {
@@ -222,9 +236,13 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate("profile")
                             }
                         },
+                        onMyRecipeClick = {
+                            navController.navigate("myrecipes")
+                        },
                         isLuckyLoading = isLuckyLoading,
                         luckyError = luckyError,
-                        onSearchClick = { navController.navigate("search") }
+                        onSearchClick = { navController.navigate("search") },
+                        onHomeClick = { navController.navigate("list") }
                     )
                 }
                 composable("search") {
@@ -238,12 +256,66 @@ class MainActivity : ComponentActivity() {
                 composable("detail/{recipeId}") { backStackEntry ->
                     val recipeId = backStackEntry.arguments?.getString("recipeId")?.toIntOrNull()
                     if (recipeId != null) {
+                        val recipe = DummyRecipe(
+                            id = recipeId,
+                            name = "",
+                            ingredients = emptyList(),
+                            instructions = emptyList(),
+                            prepTimeMinutes = null,
+                            cookTimeMinutes = null,
+                            servings = null,
+                            difficulty = null,
+                            cuisine = null,
+                            caloriesPerServing = null,
+                            tags = emptyList(),
+                            userId = null,
+                            image = null,
+                            rating = null,
+                            reviewCount = null,
+                            mealType = null,
+                            isPublic = true,
+                            isApproved = true
+                        )
                         RecipeDetailScreen(
-                            recipeId = recipeId,
+                            recipe = recipe,
+                            isUserRecipe = false,
                             onBack = { navController.popBackStack() }
                         )
                     } else {
                         Text("Invalid recipe ID")
+                    }
+                }
+                composable("userDetail/{recipeId}/{userId}") { backStackEntry ->
+                    val recipeId = backStackEntry.arguments?.getString("recipeId")?.toIntOrNull()
+                    val userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull()
+                    if (recipeId != null && userId != null) {
+                        val recipe = DummyRecipe(
+                            id = recipeId,
+                            name = "",
+                            ingredients = emptyList(),
+                            instructions = emptyList(),
+                            prepTimeMinutes = null,
+                            cookTimeMinutes = null,
+                            servings = null,
+                            difficulty = null,
+                            cuisine = null,
+                            caloriesPerServing = null,
+                            tags = emptyList(),
+                            userId = userId,
+                            image = null,
+                            rating = null,
+                            reviewCount = null,
+                            mealType = null,
+                            isPublic = true,
+                            isApproved = true
+                        )
+                        RecipeDetailScreen(
+                            recipe = recipe,
+                            isUserRecipe = true,
+                            onBack = { navController.popBackStack() }
+                        )
+                    } else {
+                        Text("Invalid recipe or user ID")
                     }
                 }
                 composable("admin") {
@@ -251,15 +323,45 @@ class MainActivity : ComponentActivity() {
                         showLoginPrompt = true
                     } else {
                         AdminScreen(
-                            pendingRecipes = pendingRecipes,
-                            onApprove = { recipe ->
-                                recipes = recipes.map {
-                                    if (it.id == recipe.id) it.copy(isApproved = true) else it
-                                }
-                                pendingRecipes = pendingRecipes.filter { it.id != recipe.id }
-                            },
+                            onBack = { navController.popBackStack() },
+                            onRecipeDetailNavigate = { recipeId, userId ->
+                                navController.navigate("adminDetail/$recipeId/$userId")
+                            }
+                        )
+                    }
+                }
+                composable("adminDetail/{recipeId}/{userId}") { backStackEntry ->
+                    val recipeId = backStackEntry.arguments?.getString("recipeId")?.toIntOrNull()
+                    val userId = backStackEntry.arguments?.getString("userId")?.toIntOrNull()
+                    if (recipeId != null && userId != null) {
+                        // Pass a minimal DummyRecipe object for user-uploaded recipe
+                        val recipe = DummyRecipe(
+                            id = recipeId,
+                            name = "",
+                            ingredients = emptyList(),
+                            instructions = emptyList(),
+                            prepTimeMinutes = null,
+                            cookTimeMinutes = null,
+                            servings = null,
+                            difficulty = null,
+                            cuisine = null,
+                            caloriesPerServing = null,
+                            tags = emptyList(),
+                            userId = userId,
+                            image = null,
+                            rating = null,
+                            reviewCount = null,
+                            mealType = null,
+                            isPublic = true,
+                            isApproved = true
+                        )
+                        RecipeDetailScreen(
+                            recipe = recipe,
+                            isUserRecipe = true,
                             onBack = { navController.popBackStack() }
                         )
+                    } else {
+                        Text("Invalid recipe or user ID")
                     }
                 }
                 composable("profile") {
@@ -278,10 +380,14 @@ class MainActivity : ComponentActivity() {
                             },
                             onHomeClick = { navController.navigate("list") },
                             onSearchClick = { navController.navigate("search") },
-                            onPantryClick = { /* TODO: Implement pantry navigation */ },
+                            onMyRecipeClick = {
+                                navController.navigate("myrecipes")
+                            },
                             onProfileClick = { navController.navigate("profile") },
                             onAddRecipe = {
+                                val userId = loggedInUser?.get("userId")?.toIntOrNull() ?: -1
                                 val intent = Intent(this@MainActivity, com.example.recipeapp.ui.AddRecipeActivity::class.java)
+                                intent.putExtra("userId", userId)
                                 addRecipeLauncher.launch(intent)
                             },
                             onAdminApproval = {
@@ -289,6 +395,44 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+                }
+                composable("myrecipes") {
+                    val userId = loggedInUser?.get("userId")?.toIntOrNull() ?: -1
+                    MyRecipeScreen(
+                        userId = userId,
+                        onRecipeClick = { recipe ->
+                            navController.navigate("userDetail/${recipe.id}/$userId")
+                        },
+                        onEditRecipe = { recipe ->
+                            val intent = Intent(context, AddRecipeActivity::class.java)
+                            intent.putExtra("edit_mode", true)
+                            intent.putExtra("recipe_id", recipe.id)
+                            intent.putExtra("user_id", recipe.userId)
+                            intent.putExtra("name", recipe.name)
+                            intent.putExtra("ingredients", ArrayList(recipe.ingredients))
+                            intent.putExtra("instructions", ArrayList(recipe.instructions))
+                            intent.putExtra("servings", recipe.servings)
+                            intent.putExtra("tags", ArrayList(recipe.tags))
+                            intent.putExtra("imageUrl", recipe.imageUrl)
+                            intent.putExtra("cookTimeMinutes", recipe.cookTimeMinutes)
+                            intent.putExtra("prepTimeMinutes", recipe.prepTimeMinutes)
+                            intent.putExtra("cuisine", recipe.cuisine)
+                            intent.putExtra("difficulty", recipe.difficulty)
+                            intent.putExtra("visibility", recipe.visibility)
+                            intent.putExtra("isApproved", recipe.isApproved)
+                            addRecipeLauncher.launch(intent)
+                        },
+                        onHomeClick = { navController.navigate("list") },
+                        onSearchClick = { navController.navigate("search") },
+                        onAddRecipe = {
+                            val userId = loggedInUser?.get("userId")?.toIntOrNull() ?: -1
+                            val intent = Intent(this@MainActivity, com.example.recipeapp.ui.AddRecipeActivity::class.java)
+                            intent.putExtra("userId", userId)
+                            addRecipeLauncher.launch(intent)
+                        },
+                        onMyRecipeClick = { navController.navigate("myrecipes") },
+                        onProfileClick = { navController.navigate("profile") }
+                    )
                 }
             }
 

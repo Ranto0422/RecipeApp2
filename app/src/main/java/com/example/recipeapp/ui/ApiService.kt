@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import kotlinx.coroutines.launch
 
+// This file contains functions to handle user login and registration via a REST API.
 suspend fun loginUser(context: Context, email: String, password: String): JSONObject? {
     val client = HttpClient(CIO)
     return try {
@@ -30,11 +31,15 @@ suspend fun loginUser(context: Context, email: String, password: String): JSONOb
         return try {
             JSONObject(stringBody)
         } catch (e: Exception) {
-            Toast.makeText(context, "Server error: ${stringBody}", Toast.LENGTH_LONG).show()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Server error: ${stringBody}", Toast.LENGTH_LONG).show()
+            }
             null
         }
     } catch (e: Exception) {
-        Toast.makeText(context, "Network error: ${e.message}", Toast.LENGTH_SHORT).show()
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, "Network error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
         null
     } finally {
         client.close()
@@ -60,11 +65,15 @@ suspend fun registerUser(context: Context, name: String, email: String, password
         return try {
             JSONObject(stringBody)
         } catch (e: Exception) {
-            Toast.makeText(context, "Server error: ${stringBody}", Toast.LENGTH_LONG).show()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Server error: ${stringBody}", Toast.LENGTH_LONG).show()
+            }
             null
         }
     } catch (e: Exception) {
-        Toast.makeText(context, "Network error: ${e.message}", Toast.LENGTH_SHORT).show()
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, "Network error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
         null
     } finally {
         client.close()

@@ -2,7 +2,9 @@ package com.example.recipeapp.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -24,38 +26,82 @@ import org.json.JSONArray
 import com.example.recipeapp.model.DummyRecipe
 
 @Composable
-fun RecipeDetailScreen(recipeId: Int, onBack: (() -> Unit)? = null) {
-    var recipe by remember { mutableStateOf<DummyRecipe?>(null) }
+fun RecipeDetailScreen(recipe: DummyRecipe, isUserRecipe: Boolean = false, onBack: (() -> Unit)? = null) {
+    var loadedRecipe by remember { mutableStateOf<DummyRecipe?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(recipeId) {
+    LaunchedEffect(recipe.id, isUserRecipe, recipe.userId) {
         isLoading = true
         try {
             val response = withContext(Dispatchers.IO) {
-                URL("https://dummyjson.com/recipes/$recipeId").readText()
+                if (isUserRecipe && recipe.userId != null) {
+                    URL("http://10.0.2.2/MyRecipeAppRestApi/get_user_recipes.php?userId=${recipe.userId}").readText()
+                } else {
+                    URL("https://dummyjson.com/recipes/${recipe.id}").readText()
+                }
             }
-            val obj = JSONObject(response)
-            recipe = DummyRecipe(
-                id = obj.getInt("id"),
-                name = obj.getString("name"),
-                ingredients = obj.getJSONArray("ingredients").toStringList(),
-                instructions = obj.getJSONArray("instructions").toStringList(),
-                prepTimeMinutes = obj.optIntOrNull("prepTimeMinutes"),
-                cookTimeMinutes = obj.optIntOrNull("cookTimeMinutes"),
-                servings = obj.optIntOrNull("servings"),
-                difficulty = obj.optStringOrNull("difficulty"),
-                cuisine = obj.optStringOrNull("cuisine"),
-                caloriesPerServing = obj.optIntOrNull("caloriesPerServing"),
-                tags = obj.optJSONArrayOrNull("tags")?.toStringList(),
-                userId = obj.optIntOrNull("userId"),
-                image = obj.optStringOrNull("image"),
-                rating = obj.optDoubleOrNull("rating"),
-                reviewCount = obj.optIntOrNull("reviewCount"),
-                mealType = obj.optJSONArrayOrNull("mealType")?.toStringList()
-            )
+            val obj = if (isUserRecipe && recipe.userId != null) {
+                val arr = JSONObject(response).getJSONArray("recipes")
+                (0 until arr.length()).map { arr.getJSONObject(it) }.find { it.getInt("id") == recipe.id }
+            } else {
+                JSONObject(response)
+            }
+            if (obj != null) {
+                val ingredientsList = if (isUserRecipe && recipe.userId != null) {
+                    try {
+                        val arr = JSONArray(obj.getString("ingredients"))
+                        List(arr.length()) { i ->
+                            val ingObj = arr.getJSONObject(i)
+                            val name = ingObj.optString("name", "")
+                            val quantity = ingObj.optString("quantity", "")
+                            val unit = ingObj.optString("unit", "")
+                            listOf(name, quantity, unit).filter { it.isNotEmpty() }.joinToString(" ")
+                        }
+                    } catch (e: Exception) { emptyList() }
+                } else {
+                    obj.getJSONArray("ingredients").toStringList()
+                }
+                val instructionsList = if (isUserRecipe && recipe.userId != null) {
+                    listOf(obj.optString("instructions", ""))
+                } else {
+                    obj.getJSONArray("instructions").toStringList()
+                }
+                var imageUrl = obj.optString("image", "")
+                if (isUserRecipe && imageUrl.startsWith("http://localhost")) {
+                    imageUrl = imageUrl.replace("http://localhost", "http://10.0.2.2")
+                }
+                val tagsList = if (isUserRecipe && recipe.userId != null) {
+                    obj.optString("tags", "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                } else {
+                    obj.optJSONArrayOrNull("tags")?.toStringList() ?: emptyList()
+                }
+                loadedRecipe = DummyRecipe(
+                    id = obj.getInt("id"),
+                    name = obj.getString("name"),
+                    ingredients = ingredientsList,
+                    instructions = instructionsList,
+                    prepTimeMinutes = obj.optIntOrNull("prepTimeMinutes"),
+                    cookTimeMinutes = obj.optIntOrNull("cookTimeMinutes"),
+                    servings = obj.optIntOrNull("servings"),
+                    difficulty = obj.optStringOrNull("difficulty"),
+                    cuisine = obj.optStringOrNull("cuisine"),
+                    caloriesPerServing = obj.optIntOrNull("caloriesPerServing"),
+                    tags = tagsList,
+                    userId = obj.optIntOrNull("userId"),
+                    image = imageUrl,
+                    rating = obj.optDoubleOrNull("rating"),
+                    reviewCount = obj.optIntOrNull("reviewCount"),
+                    mealType = null,
+                    isPublic = true,
+                    isApproved = true
+                )
+                errorMessage = null
+            } else {
+                errorMessage = "Recipe not found."
+            }
         } catch (e: Exception) {
-            errorMessage = "Failed to load recipe."
+            errorMessage = "Failed to load recipe details.\n${e.message}"
         } finally {
             isLoading = false
         }
@@ -65,7 +111,7 @@ fun RecipeDetailScreen(recipeId: Int, onBack: (() -> Unit)? = null) {
         when {
             isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             errorMessage != null -> Text(errorMessage!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
-            recipe != null -> {
+            loadedRecipe != null -> {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Top App Bar with Back Button and Title
                     Row(
@@ -81,7 +127,7 @@ fun RecipeDetailScreen(recipeId: Int, onBack: (() -> Unit)? = null) {
                         }
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            recipe!!.name,
+                            loadedRecipe!!.name,
                             style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.primary,
                             maxLines = 2,
@@ -97,10 +143,10 @@ fun RecipeDetailScreen(recipeId: Int, onBack: (() -> Unit)? = null) {
                                 .fillMaxSize(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            recipe!!.image?.let { img ->
+                            loadedRecipe!!.image?.let { img ->
                                 Image(
                                     painter = rememberAsyncImagePainter(img),
-                                    contentDescription = recipe!!.name,
+                                    contentDescription = loadedRecipe!!.name,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(220.dp)
@@ -109,30 +155,41 @@ fun RecipeDetailScreen(recipeId: Int, onBack: (() -> Unit)? = null) {
                                 )
                                 Spacer(Modifier.height(16.dp))
                             }
-                            // Chips for cuisine, difficulty, meal type
+                            // Chips for cuisine, difficulty, meal type, and tags
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                recipe!!.cuisine?.let {
-                                    androidx.compose.material3.AssistChip(
+                                loadedRecipe!!.cuisine?.let {
+                                    if (it.isNotEmpty()) androidx.compose.material3.AssistChip(
                                         onClick = {},
                                         label = { Text(it) },
                                         shape = MaterialTheme.shapes.small
                                     )
                                 }
-                                recipe!!.difficulty?.let {
-                                    androidx.compose.material3.AssistChip(
+                                loadedRecipe!!.difficulty?.let {
+                                    if (it.isNotEmpty()) androidx.compose.material3.AssistChip(
                                         onClick = {},
                                         label = { Text(it) },
                                         shape = MaterialTheme.shapes.small
                                     )
                                 }
-                                recipe!!.mealType?.firstOrNull()?.let {
-                                    androidx.compose.material3.AssistChip(
+                                loadedRecipe!!.mealType?.firstOrNull()?.let {
+                                    if (it.isNotEmpty()) androidx.compose.material3.AssistChip(
                                         onClick = {},
                                         label = { Text(it) },
+                                        shape = MaterialTheme.shapes.small
+                                    )
+                                }
+                                // Show tags as chips
+                                loadedRecipe!!.tags?.forEach {
+                                    val tagText = it.trim().replace("[", "").replace("]", "").replace("\"", "")
+                                    if (tagText.isNotEmpty()) androidx.compose.material3.AssistChip(
+                                        onClick = {},
+                                        label = { Text(tagText) },
                                         shape = MaterialTheme.shapes.small
                                     )
                                 }
@@ -143,10 +200,10 @@ fun RecipeDetailScreen(recipeId: Int, onBack: (() -> Unit)? = null) {
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                InfoColumn("Prep", "${recipe!!.prepTimeMinutes ?: "-"} min")
-                                InfoColumn("Cook", "${recipe!!.cookTimeMinutes ?: "-"} min")
-                                InfoColumn("Serves", "${recipe!!.servings ?: "-"}")
-                                InfoColumn("Cal", "${recipe!!.caloriesPerServing ?: "-"}")
+                                InfoColumn("Prep", "${loadedRecipe!!.prepTimeMinutes ?: "-"} min")
+                                InfoColumn("Cook", "${loadedRecipe!!.cookTimeMinutes ?: "-"} min")
+                                InfoColumn("Serves", "${loadedRecipe!!.servings ?: "-"}")
+                                InfoColumn("Cal", "${loadedRecipe!!.caloriesPerServing ?: "-"}")
                             }
                             Spacer(Modifier.height(16.dp))
                             // Rating and Reviews
@@ -154,14 +211,14 @@ fun RecipeDetailScreen(recipeId: Int, onBack: (() -> Unit)? = null) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                recipe!!.rating?.let {
+                                loadedRecipe!!.rating?.let {
                                     androidx.compose.material3.AssistChip(
                                         onClick = {},
                                         label = { Text("★ $it") },
                                         shape = MaterialTheme.shapes.small
                                     )
                                 }
-                                recipe!!.reviewCount?.let {
+                                loadedRecipe!!.reviewCount?.let {
                                     Text("($it reviews)", style = MaterialTheme.typography.bodySmall)
                                 }
                             }
@@ -173,7 +230,7 @@ fun RecipeDetailScreen(recipeId: Int, onBack: (() -> Unit)? = null) {
                                 verticalArrangement = Arrangement.spacedBy(4.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                recipe!!.ingredients.forEach {
+                                loadedRecipe!!.ingredients.forEach {
                                     Text("• $it", style = MaterialTheme.typography.bodyLarge)
                                 }
                             }
@@ -185,7 +242,7 @@ fun RecipeDetailScreen(recipeId: Int, onBack: (() -> Unit)? = null) {
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                recipe!!.instructions.forEachIndexed { i, step ->
+                                loadedRecipe!!.instructions.forEachIndexed { i, step ->
                                     Text("${i + 1}. $step", style = MaterialTheme.typography.bodyLarge)
                                 }
                             }

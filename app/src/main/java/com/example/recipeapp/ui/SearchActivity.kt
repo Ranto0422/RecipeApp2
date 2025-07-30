@@ -56,8 +56,7 @@ class SearchActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Apply your app's theme here if you have one, e.g., MyAppTheme { ... }
-            MaterialTheme { // Using MaterialTheme for basic theming
+            MaterialTheme {
                 SearchScreen()
             }
         }
@@ -193,7 +192,7 @@ fun SearchScreen(onRecipeClick: (DummyRecipe) -> Unit = {}, onBack: () -> Unit =
 @Preview(showBackground = true, widthDp = 360, heightDp = 640)
 @Composable
 fun SearchScreenPreview() {
-    MaterialTheme { // Wrap in MaterialTheme for preview
+    MaterialTheme {
         SearchScreen()
     }
 }

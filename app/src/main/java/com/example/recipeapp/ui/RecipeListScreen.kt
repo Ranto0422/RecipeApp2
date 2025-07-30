@@ -64,12 +64,12 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import android.content.Intent
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -77,40 +77,42 @@ import java.net.URL
 import com.example.recipeapp.util.*
 
 
+
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun RecipeListScreen(
     onAddRecipe: () -> Unit,
-    onRecipeClick: (DummyRecipe) -> Unit,
-    onLuckyClick: () -> Unit, // <-- im Feeling Lucky
-    isLuckyLoading: Boolean = false,
-    luckyError: String? = null,
-    onHomeClick: () -> Unit = {},
-    onPantryClick: () -> Unit = {},
-    onProfileClick: () -> Unit = {},
-    onSearchClick: () -> Unit = {} // <-- onSearchClick handler
+    onRecipeClick: (DummyRecipe, Boolean) -> Unit, // Add isUserRecipe flag
+    onLuckyClick: () -> Unit,
+    isLuckyLoading: Boolean,
+    luckyError: String?,
+    onHomeClick: () -> Unit,
+    onMyRecipeClick: () -> Unit,
+    onProfileClick: () -> Unit,
+    onSearchClick: () -> Unit,
+    lazyListState: LazyListState = rememberLazyListState()
 ) {
     val context = LocalContext.current
     var recipes by remember { mutableStateOf<List<DummyRecipe>>(emptyList()) }
+    var recipeSourceList by remember { mutableStateOf<List<Pair<DummyRecipe, Boolean>>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLuckyLoadingState by remember { mutableStateOf(false) }
-    var luckyErrorState by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Fetch recipes from DummyJSON API
+    // Fetch recipes from both backend and DummyJSON API
     LaunchedEffect(Unit) {
         isLoading = true
         try {
-            val response = withContext(Dispatchers.IO) {
+            val dummyResponse = withContext(Dispatchers.IO) {
                 URL("https://dummyjson.com/recipes").readText()
             }
-            val json = JSONObject(response)
-            val arr = json.getJSONArray("recipes")
-            val list = mutableListOf<DummyRecipe>()
-            for (i in 0 until arr.length()) {
-                val obj = arr.getJSONObject(i)
-                list.add(
+            val dummyJson = JSONObject(dummyResponse)
+            val dummyArr = dummyJson.getJSONArray("recipes")
+            val dummyList = mutableListOf<DummyRecipe>()
+            for (i in 0 until dummyArr.length()) {
+                val obj = dummyArr.getJSONObject(i)
+                dummyList.add(
                     DummyRecipe(
                         id = obj.getInt("id"),
                         name = obj.getString("name"),
@@ -127,14 +129,64 @@ fun RecipeListScreen(
                         image = obj.optStringOrNull("image"),
                         rating = obj.optDoubleOrNull("rating"),
                         reviewCount = obj.optIntOrNull("reviewCount"),
-                        mealType = obj.optJSONArrayOrNull("mealType")?.toStringList()
+                        mealType = obj.optJSONArrayOrNull("mealType")?.toStringList(),
+                        isPublic = true,
+                        isApproved = true
                     )
                 )
             }
-            recipes = list
+            val backendResponse = withContext(Dispatchers.IO) {
+                URL("http://10.0.2.2/MyRecipeAppRestApi/get_all_recipes.php").readText()
+            }
+            val backendJson = JSONObject(backendResponse)
+            val backendArr = backendJson.getJSONArray("recipes")
+            val backendList = mutableListOf<DummyRecipe>()
+            for (i in 0 until backendArr.length()) {
+                val obj = backendArr.getJSONObject(i)
+                // Fix image URL for emulator
+                var imageUrl = obj.optString("image")
+                if (imageUrl.startsWith("http://localhost")) {
+                    imageUrl = imageUrl.replace("http://localhost", "http://10.0.2.2")
+                }
+                // Fix tags parsing for user-uploaded recipes
+                val tagsList = try {
+                    JSONArray(obj.optString("tags", "[]")).let { tagArr -> List(tagArr.length()) { tagArr.getString(it) } }
+                } catch (_: Exception) {
+                    obj.optString("tags", "")
+                        .split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                }
+                backendList.add(
+                    DummyRecipe(
+                        id = obj.optInt("id"),
+                        name = obj.optString("name"),
+                        ingredients = try { JSONArray(obj.optString("ingredients", "[]")).let { ingArr -> List(ingArr.length()) { ingArr.getString(it) } } } catch (_: Exception) { emptyList() },
+                        instructions = try { JSONArray(obj.optString("instructions", "[]")).let { instArr -> List(instArr.length()) { instArr.getString(it) } } } catch (_: Exception) { emptyList() },
+                        prepTimeMinutes = obj.optInt("prepTimeMinutes"),
+                        cookTimeMinutes = obj.optInt("cookTimeMinutes"),
+                        servings = obj.optInt("servings"),
+                        difficulty = obj.optString("difficulty"),
+                        cuisine = obj.optString("cuisine"),
+                        caloriesPerServing = null,
+                        tags = tagsList,
+                        userId = obj.optInt("userId"),
+                        image = imageUrl,
+                        rating = null,
+                        reviewCount = null,
+                        mealType = null,
+                        isPublic = obj.optString("visibility") == "Public",
+                        isApproved = obj.optInt("isApproved", 0) == 1
+                    )
+                )
+            }
+            // Mark backend recipes with isUserRecipe = true, dummy recipes with isUserRecipe = false
+            val combinedRecipes = dummyList.map { it to false } + backendList.map { it to true }
+            recipes = combinedRecipes.filter { it.first.isApproved }.map { it.first }
+            recipeSourceList = combinedRecipes.filter { it.first.isApproved }
+            errorMessage = null
         } catch (e: Exception) {
-            errorMessage = "Failed to load recipes."
-            e.printStackTrace()
+            errorMessage = "Failed to load recipes.\n${e.message}"
         } finally {
             isLoading = false
         }
@@ -146,7 +198,9 @@ fun RecipeListScreen(
                 onHomeClick = onHomeClick,
                 onSearchClick = onSearchClick,
                 onAddRecipe = onAddRecipe,
-                onPantryClick = onPantryClick,
+                onMyRecipeClick = {
+                    onMyRecipeClick()
+                },
                 onProfileClick = onProfileClick
             )
         }
@@ -162,13 +216,20 @@ fun RecipeListScreen(
                 Text(errorMessage!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
             } else {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(recipes) { recipe ->
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        state = lazyListState
+                    ) {
+                        items(recipes.size) { idx ->
+                            val recipe = recipes[idx]
+                            val isUserRecipe = recipeSourceList.getOrNull(idx)?.second ?: false
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(8.dp)
-                                    .clickable { onRecipeClick(recipe) },
+                                    .clickable {
+                                        onRecipeClick(recipe, isUserRecipe)
+                                    },
                                 elevation = CardDefaults.cardElevation(2.dp)
                             ) {
                                 Row(modifier = Modifier.padding(8.dp)) {
