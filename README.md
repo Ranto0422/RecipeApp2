@@ -52,4 +52,4 @@ validations for each input in addrecipeactivity and recipeeditactivity
 
 inconsistency im not asking for caloris review in useruploaded recipes probably more 
 
-
+Change color of "for approval" and "approved" recipes from user uploads
