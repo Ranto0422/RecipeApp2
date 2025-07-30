@@ -5,7 +5,8 @@ This is an Android Studio app developed as a requirement for the **INTEGRATIVE P
 
 5. (Optional) To create an admin account, insert a user with role 'admin':
    - start the app and register a new user with the name "Admin" and email "admin" then go to phpMyAdmin and manually change the role to 'admin' for that user.
-
+## Important
+make a folder in C:\xampp\htdocs\ named MyRecipeUploads(this is for the uploaded images) and MyRecipeAppRestApi(put all the PHP files here)
 
 ## TODO
 Issue
