@@ -23,8 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.ExperimentalFoundationApi // For FlowRow
-import androidx.compose.foundation.layout.Arrangement.spacedBy // For FlowRow
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.platform.LocalContext
 
@@ -75,6 +75,7 @@ fun SearchScreen(onRecipeClick: (DummyRecipe) -> Unit = {}, onBack: () -> Unit =
 
     LaunchedEffect(searchQuery) {
         if (searchQuery.isNotBlank()) {
+            kotlinx.coroutines.delay(500)
             isLoading = true
             errorMessage = null
             try {

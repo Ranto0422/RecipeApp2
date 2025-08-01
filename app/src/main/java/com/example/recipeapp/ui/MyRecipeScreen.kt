@@ -48,7 +48,7 @@ fun MyRecipeScreen(
     val context = LocalContext.current
 
     // Fetch user recipes from PHP backend
-    LaunchedEffect(userId, reloadTrigger) { // Add reloadTrigger to effect
+    LaunchedEffect(userId, reloadTrigger) {
         isLoading = true
         try {
             val response = withContext(Dispatchers.IO) {
@@ -187,7 +187,7 @@ fun MyRecipeScreen(
                                 },
                             colors = CardDefaults.cardColors(
                                 containerColor = when {
-                                    recipe.visibility == "Public" && recipe.isApproved == 0 -> MaterialTheme.colorScheme.primaryContainer // Pending
+                                    recipe.visibility == "Public" && recipe.isApproved == 0 -> MaterialTheme.colorScheme.tertiaryContainer // Pending (yellow)
                                     recipe.visibility == "Public" && recipe.isApproved == 1 -> MaterialTheme.colorScheme.primaryContainer // Approved
                                     recipe.visibility == "Public" && recipe.isApproved == -1 -> MaterialTheme.colorScheme.errorContainer // Declined
                                     else -> MaterialTheme.colorScheme.surfaceVariant

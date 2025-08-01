@@ -33,6 +33,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URL
 
+
 @Composable
 fun RecipeEditScreen(
     userId: Int,
@@ -48,14 +49,12 @@ fun RecipeEditScreen(
     var cookTime by remember { mutableStateOf("") }
     var prepTime by remember { mutableStateOf("") }
     var cuisine by remember { mutableStateOf("") }
-    var difficulty by remember { mutableStateOf("") }
     var visibility by remember { mutableStateOf("Only me") }
-    var isApproved by remember { mutableStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
     var uploadError by remember { mutableStateOf<String?>(null) }
     var isUploading by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     // Custom update function for edit mode
     fun updateRecipe() {
@@ -105,7 +104,6 @@ fun RecipeEditScreen(
                     .add("cookTimeMinutes", cookTime.trim())
                     .add("prepTimeMinutes", prepTime.trim().ifEmpty { "0" })
                     .add("cuisine", cuisine.trim())
-                    .add("difficulty", difficulty.trim())
                     .add("visibility", visibility.trim())
                     .build()
 
@@ -127,7 +125,7 @@ fun RecipeEditScreen(
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful && responseBody != null) {
                         try {
-                            val json = org.json.JSONObject(responseBody)
+                            val json = JSONObject(responseBody)
                             if (json.optBoolean("success", false)) {
                                 println("RecipeEditScreen: Update successful")
                                 onSave?.invoke()
@@ -251,9 +249,7 @@ fun RecipeEditScreen(
                         cookTime = obj.optString("cookTimeMinutes", "")
                         prepTime = obj.optString("prepTimeMinutes", "")
                         cuisine = obj.optString("cuisine", "")
-                        difficulty = obj.optString("difficulty", "")
                         visibility = obj.optString("visibility", "Only me")
-                        isApproved = obj.optInt("isApproved", 0)
 
                         println("RecipeEditScreen: All fields set successfully")
                         found = true
@@ -311,14 +307,17 @@ fun RecipeEditScreen(
             onPrepTimeChange = { prepTime = it },
             cuisine = cuisine,
             onCuisineChange = { cuisine = it },
-            difficulty = difficulty,
-            onDifficultyChange = { difficulty = it },
             visibility = visibility,
             onVisibilityChange = { visibility = it },
             isUploading = isUploading,
             uploadError = uploadError,
             onSave = { updateRecipe() },
-            onBack = onBack
+            onBack = onBack,
+            recipeId = recipeId,
+            userId = userId,
+            setIsUploading = { isUploading = it },
+            setUploadError = { uploadError = it },
+            scope = scope
         )
     }
 }
@@ -341,19 +340,24 @@ fun EditRecipeContent(
     onPrepTimeChange: (String) -> Unit,
     cuisine: String,
     onCuisineChange: (String) -> Unit,
-    difficulty: String,
-    onDifficultyChange: (String) -> Unit,
     visibility: String,
     onVisibilityChange: (String) -> Unit,
     isUploading: Boolean,
     uploadError: String?,
     onSave: () -> Unit,
-    onBack: (() -> Unit)?
+    onBack: (() -> Unit)? = null,
+    recipeId: Int,
+    userId: Int,
+    setIsUploading: (Boolean) -> Unit,
+    setUploadError: (String?) -> Unit,
+    scope: CoroutineScope
 ) {
     var ingredientName by remember { mutableStateOf("") }
     var ingredientQty by remember { mutableStateOf("") }
     var ingredientUnit by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var deleteRequested by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -554,6 +558,20 @@ fun EditRecipeContent(
                 }
             }
 
+            // Delete Button (below Update Recipe)
+            if (recipeId > 0) {
+                Button(
+                    onClick = { showDeleteDialog = true },
+                    enabled = !isUploading,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Text("Delete Recipe", color = MaterialTheme.colorScheme.onError)
+                }
+            }
+
             // Error Message
             uploadError?.let { error ->
                 Text(
@@ -562,6 +580,64 @@ fun EditRecipeContent(
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
+        }
+
+        // Place this at the top level of EditRecipeContent composable
+        if (deleteRequested) {
+            LaunchedEffect(deleteRequested) {
+                setIsUploading(true)
+                setUploadError(null)
+                try {
+                    val client = OkHttpClient()
+                    val requestBody = FormBody.Builder()
+                        .add("recipeId", recipeId.toString())
+                        .add("userId", userId.toString())
+                        .build()
+                    val request = Request.Builder()
+                        .url("http://10.0.2.2/MyRecipeAppRestApi/delete_recipe.php")
+                        .post(requestBody)
+                        .build()
+                    val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                    val responseBody = response.body?.string()
+                    if (response.isSuccessful && responseBody != null) {
+                        val json = JSONObject(responseBody)
+                        if (json.optBoolean("success", false)) {
+                            onBack?.invoke()
+                        } else {
+                            setUploadError(json.optString("error", "Failed to delete recipe"))
+                        }
+                    } else {
+                        setUploadError("Server error: ${response.code} - ${responseBody ?: "Unknown error"}")
+                    }
+                } catch (e: Exception) {
+                    setUploadError("Delete failed: ${e.message}")
+                } finally {
+                    setIsUploading(false)
+                    deleteRequested = false
+                }
+            }
+        }
+
+        // Confirmation dialog for delete
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Delete Recipe") },
+                text = { Text("Are you sure you want to delete this recipe? This action cannot be undone.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showDeleteDialog = false
+                        deleteRequested = true
+                    }) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }

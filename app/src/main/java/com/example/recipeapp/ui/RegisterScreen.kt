@@ -84,6 +84,7 @@ fun RegisterScreen(
                             error = "Network error."
                         } else if (result.optBoolean("success")) {
                             onRegister(name, email, password)
+                            android.widget.Toast.makeText(context, "Registration successful!", android.widget.Toast.LENGTH_LONG).show()
                         } else {
                             error = result.optString("message", "Registration failed.")
                         }

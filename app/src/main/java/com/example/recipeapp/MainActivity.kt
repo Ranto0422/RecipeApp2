@@ -397,42 +397,46 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 composable("myrecipes") {
-                    val userId = loggedInUser?.get("userId")?.toIntOrNull() ?: -1
-                    MyRecipeScreen(
-                        userId = userId,
-                        onRecipeClick = { recipe ->
-                            navController.navigate("userDetail/${recipe.id}/$userId")
-                        },
-                        onEditRecipe = { recipe ->
-                            val intent = Intent(context, AddRecipeActivity::class.java)
-                            intent.putExtra("edit_mode", true)
-                            intent.putExtra("recipe_id", recipe.id)
-                            intent.putExtra("user_id", recipe.userId)
-                            intent.putExtra("name", recipe.name)
-                            intent.putExtra("ingredients", ArrayList(recipe.ingredients))
-                            intent.putExtra("instructions", ArrayList(recipe.instructions))
-                            intent.putExtra("servings", recipe.servings)
-                            intent.putExtra("tags", ArrayList(recipe.tags))
-                            intent.putExtra("imageUrl", recipe.imageUrl)
-                            intent.putExtra("cookTimeMinutes", recipe.cookTimeMinutes)
-                            intent.putExtra("prepTimeMinutes", recipe.prepTimeMinutes)
-                            intent.putExtra("cuisine", recipe.cuisine)
-                            intent.putExtra("difficulty", recipe.difficulty)
-                            intent.putExtra("visibility", recipe.visibility)
-                            intent.putExtra("isApproved", recipe.isApproved)
-                            addRecipeLauncher.launch(intent)
-                        },
-                        onHomeClick = { navController.navigate("list") },
-                        onSearchClick = { navController.navigate("search") },
-                        onAddRecipe = {
-                            val userId = loggedInUser?.get("userId")?.toIntOrNull() ?: -1
-                            val intent = Intent(this@MainActivity, com.example.recipeapp.ui.AddRecipeActivity::class.java)
-                            intent.putExtra("userId", userId)
-                            addRecipeLauncher.launch(intent)
-                        },
-                        onMyRecipeClick = { navController.navigate("myrecipes") },
-                        onProfileClick = { navController.navigate("profile") }
-                    )
+                    if (isGuest) {
+                        showLoginPrompt = true
+                    } else {
+                        val userId = loggedInUser?.get("userId")?.toIntOrNull() ?: -1
+                        MyRecipeScreen(
+                            userId = userId,
+                            onRecipeClick = { recipe ->
+                                navController.navigate("userDetail/${recipe.id}/$userId")
+                            },
+                            onEditRecipe = { recipe ->
+                                val intent = Intent(context, AddRecipeActivity::class.java)
+                                intent.putExtra("edit_mode", true)
+                                intent.putExtra("recipe_id", recipe.id)
+                                intent.putExtra("user_id", recipe.userId)
+                                intent.putExtra("name", recipe.name)
+                                intent.putExtra("ingredients", ArrayList(recipe.ingredients))
+                                intent.putExtra("instructions", ArrayList(recipe.instructions))
+                                intent.putExtra("servings", recipe.servings)
+                                intent.putExtra("tags", ArrayList(recipe.tags))
+                                intent.putExtra("imageUrl", recipe.imageUrl)
+                                intent.putExtra("cookTimeMinutes", recipe.cookTimeMinutes)
+                                intent.putExtra("prepTimeMinutes", recipe.prepTimeMinutes)
+                                intent.putExtra("cuisine", recipe.cuisine)
+                                intent.putExtra("difficulty", recipe.difficulty)
+                                intent.putExtra("visibility", recipe.visibility)
+                                intent.putExtra("isApproved", recipe.isApproved)
+                                addRecipeLauncher.launch(intent)
+                            },
+                            onHomeClick = { navController.navigate("list") },
+                            onSearchClick = { navController.navigate("search") },
+                            onAddRecipe = {
+                                val userId = loggedInUser?.get("userId")?.toIntOrNull() ?: -1
+                                val intent = Intent(this@MainActivity, com.example.recipeapp.ui.AddRecipeActivity::class.java)
+                                intent.putExtra("userId", userId)
+                                addRecipeLauncher.launch(intent)
+                            },
+                            onMyRecipeClick = { navController.navigate("myrecipes") },
+                            onProfileClick = { navController.navigate("profile") }
+                        )
+                    }
                 }
             }
 
@@ -459,3 +463,4 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
